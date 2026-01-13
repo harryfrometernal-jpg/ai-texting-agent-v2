@@ -151,8 +151,8 @@ export class ContactManager {
 
       // Add to contacts table
       const { rows: newContact } = await db.sql`
-        INSERT INTO contacts (name, phone_number, added_by_ai, ai_status)
-        VALUES (${name}, ${normalizedPhone}, ${addedByAi}, 'active')
+        INSERT INTO contacts (name, phone_number)
+        VALUES (${name}, ${normalizedPhone})
         ON CONFLICT (phone_number) DO UPDATE SET name = ${name}
         RETURNING id
       `;
@@ -323,8 +323,8 @@ export class ContactManager {
       if (existingContact.length === 0) {
         // Add as new contact
         await db.sql`
-          INSERT INTO contacts (name, phone_number, added_by_ai, ai_status)
-          VALUES (${normalizedPhone}, ${normalizedPhone}, true, 'active')
+          INSERT INTO contacts (name, phone_number)
+          VALUES (${normalizedPhone}, ${normalizedPhone})
           ON CONFLICT (phone_number) DO NOTHING
         `;
         contactName = normalizedPhone;
