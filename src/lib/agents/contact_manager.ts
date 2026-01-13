@@ -342,8 +342,8 @@ export class ContactManager {
 
       // Log the outbound message
       await db.sql`
-        INSERT INTO conversation_logs (contact_phone, direction, content, agent_used)
-        VALUES (${normalizedPhone}, 'outbound', ${command.message}, 'contact_manager_direct')
+        INSERT INTO conversation_logs (contact_phone, direction, content)
+        VALUES (${normalizedPhone}, 'outbound', ${command.message})
       `;
 
       return `✅ Message sent to ${normalizedPhone}: "${command.message}"${command.goalDescription ? `\n\nGoal set: ${command.goalDescription}` : ''}`;
