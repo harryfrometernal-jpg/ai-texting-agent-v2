@@ -13,6 +13,13 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
     return { type: 'vision' as AgentType }; // We need to add 'vision' to AgentType
   }
 
+  // 0.5. Check for explicit contact manager patterns (phone numbers)
+  const phonePattern = /(?:text|call|contact|reach out to|check in on|message)\s*(?:phone\s*)?(?:number\s*)?(\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})/i;
+  if (phonePattern.test(context.body)) {
+    console.log("Router detected phone number pattern. Routing to Contact Manager.");
+    return { type: 'contact_manager' as AgentType, sentiment: 'neutral' };
+  }
+
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   // Updated to use gemini-2.0-flash as 1.5 was unavailable for the current API key.
@@ -37,7 +44,7 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
     9. 'system': Requests for "System Status", "Health Check", or "Diagnostic".
     10. 'scheduler': Requests to schedule a message/text for later. (e.g. "Remind me to text Bob tomorrow").
     11. 'zoom': Requests to create Zoom meetings, get meeting links, or video calls.
-    12. 'contact_manager': Admin commands to add contacts, find contacts, or text specific people/phone numbers directly (e.g., "text 8566883958 and check in on them").
+    12. 'contact_manager': Admin commands to add contacts, find contacts, or text specific people/phone numbers directly. Includes commands like "text [phone number]", "text [number] and [message]", "add contact [name] [phone]", "contact management", or any instruction to send a text to a specific phone number.
 
     Also analyze the user's sentiment: 'positive', 'neutral', 'negative', 'frustrated'.
 
