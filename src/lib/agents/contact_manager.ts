@@ -290,8 +290,15 @@ export class ContactManager {
     const normalizedPhone = normalizePhoneNumber(command.contactPhone);
 
     try {
-      // Send message immediately through webhook
-      const OUTBOUND_WEBHOOK_URL = process.env.GHL_OUTBOUND_WEBHOOK_URL;
+      // Get the outbound webhook URL from organization settings
+      const { rows: orgRows } = await db.sql`
+        SELECT ghl_webhook_url FROM organizations
+        WHERE ghl_webhook_url IS NOT NULL
+        ORDER BY created_at ASC
+        LIMIT 1
+      `;
+
+      const OUTBOUND_WEBHOOK_URL = orgRows[0]?.ghl_webhook_url || process.env.GHL_OUTBOUND_WEBHOOK_URL;
 
       if (!OUTBOUND_WEBHOOK_URL) {
         return "❌ SMS sending is not configured. Please contact your administrator.";

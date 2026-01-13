@@ -2,10 +2,18 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import axios from 'axios';
 
-const OUTBOUND_WEBHOOK_URL = process.env.GHL_OUTBOUND_WEBHOOK_URL;
-
 export async function POST(req: Request) {
     try {
+        // Get the outbound webhook URL from organization settings
+        const { rows: orgRows } = await db.sql`
+            SELECT ghl_webhook_url FROM organizations
+            WHERE ghl_webhook_url IS NOT NULL
+            ORDER BY created_at ASC
+            LIMIT 1
+        `;
+
+        const OUTBOUND_WEBHOOK_URL = orgRows[0]?.ghl_webhook_url || process.env.GHL_OUTBOUND_WEBHOOK_URL;
+
         if (!OUTBOUND_WEBHOOK_URL) {
             return NextResponse.json({
                 error: "GHL_OUTBOUND_WEBHOOK_URL not configured"
