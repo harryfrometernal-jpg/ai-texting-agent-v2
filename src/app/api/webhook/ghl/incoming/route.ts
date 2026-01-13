@@ -250,7 +250,7 @@ export async function POST(req: Request) {
                     console.log('🔍 Webhook: Trying contact_manager with', {
                         From,
                         Body: Body.substring(0, 50) + '...',
-                        routedAgent: routedAgent
+                        agent: 'contact_manager'
                     });
 
                     const contactCommand = await ContactManager.parseCommand(From, Body);
