@@ -1,0 +1,75 @@
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { IncomingMessageContext, AgentType, VapiAssistant } from "./types";
+import { db } from "@/lib/db";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+export async function routeMessage(context: IncomingMessageContext): Promise<{ type: AgentType; vapiAssistantId?: string; sentiment?: string }> {
+  // 0. Check for Attachments (MMS)
+  // If GHL/Twilio sends "NumMedia" > 0, it's an image message
+  const numMedia = parseInt((context as any).numMedia || '0');
+  if (numMedia > 0) {
+    console.log("Router detected MMS/Image. Routing to Vision Agent.");
+    return { type: 'vision' as AgentType }; // We need to add 'vision' to AgentType
+  }
+
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+  // Updated to use gemini-2.0-flash as 1.5 was unavailable for the current API key.
+
+  // Fetch Vapi assistants to include in the prompt
+  // Fetch Vapi assistants
+  const { rows: assistants } = await db.sql`SELECT * FROM vapi_assistants`;
+  const assistantList = assistants?.map(a => `- Name: ${a.name}, Description: ${a.description}, ID: ${a.assistant_id}`).join('\n') || "No specific Vapi agents registered.";
+
+  const prompt = `
+    You are an intelligent router for an AI texting platform.
+    Your goal is to classify the user's incoming SMS into one of the following agents:
+    
+    1. 'knowledge': General questions about the business, services, pricing, or "who are you" type questions. (Utilizes RAG/Knowledge Base).
+    2. 'calendar': Requests to schedule, check, or modify calendar events, or asking for availability.
+    3. 'docs': Requests to create documents, SOPs, or write content to a file.
+    4. 'vapi': Requests to have an AI CALL someone.
+    5. 'followup_scheduler': Requests to set up a reminder or future follow-up.
+    6. 'picasso': Requests to generate, draw, or create an image/picture/logo.
+    7. 'campaigner': Requests to send mass messages, blasts, or text multiple people/tags.
+    8. 'concierge': Requests to find places, restaurants, locations, or directions (Maps).
+    9. 'system': Requests for "System Status", "Health Check", or "Diagnostic".
+    10. 'scheduler': Requests to schedule a message/text for later. (e.g. "Remind me to text Bob tomorrow").
+    11. 'zoom': Requests to create Zoom meetings, get meeting links, or video calls.
+    12. 'contact_manager': Admin commands to add contacts, find contacts, or text specific people/phone numbers directly (e.g., "text 8566883958 and check in on them").
+
+    Also analyze the user's sentiment: 'positive', 'neutral', 'negative', 'frustrated'.
+
+    For 'vapi' (Call) requests, you must also pick the best matching Vapi Assistant ID from this list:
+    ${assistantList}
+
+    User Message: "${context.body}"
+    
+    Respond strictly in JSON format:
+    {
+      "type": "agent_type", // One of: 'knowledge', 'calendar', 'docs', 'vapi', 'followup_scheduler', 'picasso', 'campaigner', 'concierge', 'system', 'scheduler', 'zoom', 'contact_manager'
+      "sentiment": "sentiment_value", // 'positive', 'neutral', 'negative', 'frustrated'
+      "vapiAssistantId": "id_if_vapi_agent_selected_or_null",
+      "reason": "short explanation"
+    }
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+    // Clean code blocks if present
+    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const json = JSON.parse(cleanText);
+
+    return {
+      type: json.type,
+      vapiAssistantId: json.vapiAssistantId,
+      sentiment: json.sentiment
+    };
+  } catch (error) {
+    console.error("Router Error:", error);
+    return { type: 'general' }; // Fallback
+  }
+}
