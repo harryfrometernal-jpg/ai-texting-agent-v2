@@ -261,7 +261,7 @@ export async function POST(req: Request) {
                     });
 
                     if (contactCommand) {
-                        finalResponse = await ContactManager.processCommand(contactCommand);
+                        finalResponse = await ContactManager.processCommand(contactCommand, From);
                     } else {
                         finalResponse = "Contact management commands are only available to administrators.";
                     }

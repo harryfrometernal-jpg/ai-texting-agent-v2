@@ -178,7 +178,7 @@ export class ContactManager {
   }
 
   // Process contact management command
-  static async processCommand(command: ContactCommand): Promise<string> {
+  static async processCommand(command: ContactCommand, adminPhone?: string): Promise<string> {
     try {
       switch (command.action) {
         case 'add_contact':
@@ -219,7 +219,7 @@ export class ContactManager {
           return await this.initiateContactText(command);
 
         case 'text_phone':
-          return await this.sendDirectMessage(command);
+          return await this.sendDirectMessage(command, adminPhone);
 
         default:
           return "❌ Unknown contact command.";
@@ -282,7 +282,7 @@ export class ContactManager {
   }
 
   // Send direct message to a phone number
-  static async sendDirectMessage(command: ContactCommand): Promise<string> {
+  static async sendDirectMessage(command: ContactCommand, adminPhone?: string): Promise<string> {
     if (!command.contactPhone || !command.message) {
       return "Please provide both phone number and message.";
     }
@@ -313,6 +313,15 @@ export class ContactManager {
         source: 'contact_manager_direct'
       });
 
+      // Get organization for admin user (the one sending the command)
+      const { rows: adminOrgRows } = await db.sql`
+        SELECT org_id FROM whitelist
+        WHERE phone_number = ${adminPhone || normalizedPhone}
+        LIMIT 1
+      `;
+
+      const orgId = adminOrgRows[0]?.org_id;
+
       // Create or update contact if it doesn't exist
       const { rows: existingContact } = await db.sql`
         SELECT id, name FROM contacts WHERE phone_number = ${normalizedPhone} LIMIT 1
@@ -320,18 +329,18 @@ export class ContactManager {
 
       let contactName = existingContact[0]?.name || normalizedPhone;
 
-      if (existingContact.length === 0) {
-        // Add as new contact
+      if (existingContact.length === 0 && orgId) {
+        // Add as new contact with org_id
         await db.sql`
-          INSERT INTO contacts (name, phone_number)
-          VALUES (${normalizedPhone}, ${normalizedPhone})
+          INSERT INTO contacts (name, phone_number, org_id)
+          VALUES (${normalizedPhone}, ${normalizedPhone}, ${orgId})
           ON CONFLICT (phone_number) DO NOTHING
         `;
         contactName = normalizedPhone;
       }
 
       // Create goal if goal description is provided
-      if (command.goalDescription) {
+      if (command.goalDescription && orgId) {
         await GoalTracker.createGoal({
           contact_phone: normalizedPhone,
           contact_name: contactName,
@@ -341,10 +350,12 @@ export class ContactManager {
       }
 
       // Log the outbound message
-      await db.sql`
-        INSERT INTO conversation_logs (contact_phone, direction, content)
-        VALUES (${normalizedPhone}, 'outbound', ${command.message})
-      `;
+      if (orgId) {
+        await db.sql`
+          INSERT INTO conversation_logs (contact_phone, direction, content, org_id)
+          VALUES (${normalizedPhone}, 'outbound', ${command.message}, ${orgId})
+        `;
+      }
 
       return `✅ Message sent to ${normalizedPhone}: "${command.message}"${command.goalDescription ? `\n\nGoal set: ${command.goalDescription}` : ''}`;
 
