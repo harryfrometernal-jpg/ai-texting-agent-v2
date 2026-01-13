@@ -18,14 +18,32 @@ export interface ContactCommand {
 export class ContactManager {
   // Parse admin commands for contact management
   static async parseCommand(adminPhone: string, message: string): Promise<ContactCommand | null> {
+    // Normalize the incoming phone number first
+    const normalizedAdminPhone = normalizePhoneNumber(adminPhone);
+
+    console.log('🔍 ContactManager: Checking admin access', {
+      originalPhone: adminPhone,
+      normalizedPhone: normalizedAdminPhone,
+      message: message.substring(0, 50) + '...'
+    });
+
     // Check if this is from an admin (whitelisted user)
     const { rows: adminCheck } = await db.sql`
-      SELECT id FROM whitelist WHERE phone_number = ${adminPhone} LIMIT 1
+      SELECT id, phone_number, role FROM whitelist WHERE phone_number = ${normalizedAdminPhone} LIMIT 1
     `;
 
+    console.log('🔍 ContactManager: Admin check result', {
+      normalizedPhone: normalizedAdminPhone,
+      foundRecords: adminCheck.length,
+      adminData: adminCheck[0] || null
+    });
+
     if (adminCheck.length === 0) {
+      console.log('❌ ContactManager: Phone not found in whitelist');
       return null; // Not an admin
     }
+
+    console.log('✅ ContactManager: Admin access confirmed');
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 

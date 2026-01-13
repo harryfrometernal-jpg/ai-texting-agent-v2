@@ -247,7 +247,19 @@ export async function POST(req: Request) {
 
                 case 'contact_manager':
                     // Check if this is from admin
+                    console.log('🔍 Webhook: Trying contact_manager with', {
+                        From,
+                        Body: Body.substring(0, 50) + '...',
+                        routedAgent: routedAgent
+                    });
+
                     const contactCommand = await ContactManager.parseCommand(From, Body);
+
+                    console.log('🔍 Webhook: Contact command result', {
+                        commandFound: !!contactCommand,
+                        command: contactCommand
+                    });
+
                     if (contactCommand) {
                         finalResponse = await ContactManager.processCommand(contactCommand);
                     } else {
