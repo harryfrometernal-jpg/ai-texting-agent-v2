@@ -21,7 +21,8 @@ export class AdminNotificationService {
       console.log(`[ADMIN SMS] Message: ${message}`);
 
       // Use GHL outgoing webhook to send SMS to admin
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/webhook/ghl/outgoing`, {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/webhook/ghl/outgoing`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

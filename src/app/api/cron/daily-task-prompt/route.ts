@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { TaskManager } from '@/lib/agents/task_manager';
 import axios from 'axios';
 
 export async function GET(req: Request) {
@@ -59,6 +58,7 @@ export async function GET(req: Request) {
                 console.log(`Processing daily prompt for user: ${user.user_phone}`);
 
                 // Generate and send the daily prompt
+                const { TaskManager } = await import('@/lib/agents/task_manager');
                 const promptMessage = await TaskManager.sendDailyPrompt(user.user_phone);
 
                 if (promptMessage !== "Daily prompt already sent today.") {

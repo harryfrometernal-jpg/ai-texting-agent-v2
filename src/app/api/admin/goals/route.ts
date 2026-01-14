@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { GoalTracker } from '@/lib/agents/goal_tracker';
 
 export async function GET(req: Request) {
   try {
@@ -30,6 +29,7 @@ export async function GET(req: Request) {
         if (!contactPhone) {
           return NextResponse.json({ error: 'Missing contact_phone' }, { status: 400 });
         }
+        const { GoalTracker } = await import('@/lib/agents/goal_tracker');
         const goal = await GoalTracker.getActiveGoal(contactPhone);
         return NextResponse.json(goal);
 
@@ -37,7 +37,8 @@ export async function GET(req: Request) {
         if (!contactPhone) {
           return NextResponse.json({ error: 'Missing contact_phone' }, { status: 400 });
         }
-        const summary = await GoalTracker.getGoalSummary(contactPhone);
+        const { GoalTracker: GoalTrackerSummary } = await import('@/lib/agents/goal_tracker');
+        const summary = await GoalTrackerSummary.getGoalSummary(contactPhone);
         return NextResponse.json({ summary });
 
       default:
@@ -60,7 +61,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const goalId = await GoalTracker.createGoal({
+        const { GoalTracker: GoalTracker2 } = await import('@/lib/agents/goal_tracker');
+        const goalId = await GoalTracker2.createGoal({
           contact_phone: contactPhone,
           contact_name: contactName,
           goal_description: goalDescription,
@@ -74,7 +76,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Missing contactPhone or summary' }, { status: 400 });
         }
 
-        await GoalTracker.completeGoal(contactPhone, summary);
+        const { GoalTracker: GoalTracker3 } = await import('@/lib/agents/goal_tracker');
+        await GoalTracker3.completeGoal(contactPhone, summary);
         return NextResponse.json({ success: true });
 
       case 'abandon':
@@ -82,7 +85,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Missing contactPhone or reason' }, { status: 400 });
         }
 
-        await GoalTracker.abandonGoal(contactPhone, reason);
+        const { GoalTracker: GoalTracker4 } = await import('@/lib/agents/goal_tracker');
+        await GoalTracker4.abandonGoal(contactPhone, reason);
         return NextResponse.json({ success: true });
 
       default:

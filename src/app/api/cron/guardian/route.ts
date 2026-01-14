@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { runKnowledgeAgent } from '@/lib/agents/knowledge';
 import { db } from '@/lib/db';
 
 export async function GET(req: Request) {
@@ -15,6 +14,7 @@ export async function GET(req: Request) {
 
         // 2. Test Core Agent (Knowledge Base)
         const startTime = Date.now();
+        const { runKnowledgeAgent } = await import('@/lib/agents/knowledge');
         const response = await runKnowledgeAgent(testContext);
         const duration = Date.now() - startTime;
 

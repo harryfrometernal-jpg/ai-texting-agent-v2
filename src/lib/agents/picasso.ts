@@ -41,7 +41,7 @@ export async function runPicassoAgent(context: IncomingMessageContext): Promise<
             const imageId = rows[0].id;
             // Assuming the app is deployed on Vercel or locally, we construct the URL.
             // In production, you might want to use process.env.NEXT_PUBLIC_APP_URL
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
             const shortLink = `${appUrl}/api/images/${imageId}`;
 
             return `Here is your masterpiece! 🎨\n\n${shortLink}\n\n(This link will expire in 24 hours)`;

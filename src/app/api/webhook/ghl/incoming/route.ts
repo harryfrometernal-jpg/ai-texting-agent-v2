@@ -1,21 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from "@/lib/db";
-import { routeMessage } from '@/lib/agents/router';
-import { runKnowledgeAgent } from '@/lib/agents/knowledge';
-import { triggerVapiCall } from '@/lib/agents/vapi';
-import { runCalendarAgent } from '@/lib/agents/calendar';
-import { runFollowupAgent } from '@/lib/agents/scheduler';
-import { MemoryManager } from '@/lib/agents/memory';
-import { runVisionAgent } from '@/lib/agents/vision';
-import { runPicassoAgent } from '@/lib/agents/picasso';
-import { runCampaignerAgent } from '@/lib/agents/campaigner';
-import { runConciergeAgent } from '@/lib/agents/concierge';
-import { runSystemAgent } from '@/lib/agents/system';
-import { runTimeTravelerAgent } from '@/lib/agents/time_traveler';
-import { runZoomAgent } from '@/lib/agents/zoom_agent';
-import { ContactManager } from '@/lib/agents/contact_manager';
-import { GoalTracker } from '@/lib/agents/goal_tracker';
-import { AdminNotificationService } from '@/lib/services/admin_notifications';
 import { normalizePhoneNumber } from '@/lib/utils';
 import { ErrorHandler } from '@/lib/utils/error-handler';
 
@@ -121,6 +105,7 @@ export async function POST(req: Request) {
         };
 
         // 4. Route Message
+        const { routeMessage } = await import('@/lib/agents/router');
         const routingResult = await routeMessage(context);
         console.log("Routing Result:", routingResult);
 
@@ -184,6 +169,7 @@ export async function POST(req: Request) {
                     // Trigger Call
                     if (routingResult.vapiAssistantId) {
                         const callResult = await ErrorHandler.retryWithBackoff(async () => {
+                            const { triggerVapiCall } = await import('@/lib/agents/vapi');
                             return await triggerVapiCall(From, routingResult.vapiAssistantId!, {
                                 name: context.contactName,
                                 summary: `User asked: "${context.body}". Please assist them.`
@@ -202,6 +188,7 @@ export async function POST(req: Request) {
 
                 case 'calendar':
                     finalResponse = await ErrorHandler.retryWithBackoff(async () => {
+                        const { runCalendarAgent } = await import('@/lib/agents/calendar');
                         return await runCalendarAgent(context);
                     }, 2);
                     break;
@@ -212,35 +199,43 @@ export async function POST(req: Request) {
                     break;
 
                 case 'followup_scheduler':
+                    const { runFollowupAgent } = await import('@/lib/agents/scheduler');
                     finalResponse = await runFollowupAgent(context);
                     break;
 
                 case 'vision':
+                    const { runVisionAgent } = await import('@/lib/agents/vision');
                     finalResponse = await runVisionAgent(context);
                     break;
 
                 case 'picasso':
+                    const { runPicassoAgent } = await import('@/lib/agents/picasso');
                     finalResponse = await runPicassoAgent(context);
                     break;
 
                 case 'campaigner':
+                    const { runCampaignerAgent } = await import('@/lib/agents/campaigner');
                     finalResponse = await runCampaignerAgent(context);
                     break;
 
                 case 'concierge':
+                    const { runConciergeAgent } = await import('@/lib/agents/concierge');
                     finalResponse = await runConciergeAgent(context);
                     break;
 
                 case 'system':
+                    const { runSystemAgent } = await import('@/lib/agents/system');
                     finalResponse = await runSystemAgent();
                     break;
 
                 case 'scheduler':
+                    const { runTimeTravelerAgent } = await import('@/lib/agents/time_traveler');
                     finalResponse = await runTimeTravelerAgent(context);
                     break;
 
                 case 'zoom':
                     finalResponse = await ErrorHandler.retryWithBackoff(async () => {
+                        const { runZoomAgent } = await import('@/lib/agents/zoom_agent');
                         return await runZoomAgent(context);
                     }, 2);
                     break;
@@ -253,6 +248,7 @@ export async function POST(req: Request) {
                         agent: 'contact_manager'
                     });
 
+                    const { ContactManager } = await import('@/lib/agents/contact_manager');
                     const contactCommand = await ContactManager.parseCommand(From, Body);
 
                     console.log('🔍 Webhook: Contact command result', {
@@ -281,6 +277,7 @@ export async function POST(req: Request) {
                 case 'general':
                 default:
                     finalResponse = await ErrorHandler.retryWithBackoff(async () => {
+                        const { runKnowledgeAgent } = await import('@/lib/agents/knowledge');
                         return await runKnowledgeAgent(context);
                     }, 2);
                     break;
@@ -291,17 +288,20 @@ export async function POST(req: Request) {
 
         // 6. Goal Tracking (only for contacts, not whitelisted admin users)
         if (!isFullAdmin && activeGoal) {
+            const { GoalTracker } = await import('@/lib/agents/goal_tracker');
             const goalProgress = await GoalTracker.analyzeProgress(From, Body, finalResponse);
 
             // If goal completed, send summary to admin
             if (goalProgress.isCompleted) {
                 const summary = await GoalTracker.getGoalSummary(From);
+                const { AdminNotificationService } = await import('@/lib/services/admin_notifications');
                 await AdminNotificationService.goalCompleted(From, context.contactName, summary, context.orgId);
             }
 
             // If conversation going off track, alert admin
             if (goalProgress.shouldAlert && !goalProgress.isCompleted) {
-                await AdminNotificationService.goalDrift(From, context.contactName, goalProgress.alertReason || "Conversation drift detected", context.orgId);
+                const { AdminNotificationService: AdminNotificationService2 } = await import('@/lib/services/admin_notifications');
+                await AdminNotificationService2.goalDrift(From, context.contactName, goalProgress.alertReason || "Conversation drift detected", context.orgId);
             }
         }
 
@@ -314,8 +314,14 @@ export async function POST(req: Request) {
         // 8. Background: Extract Memories (Fire and Forget)
         // We don't await this so the webhook returns fast
         Promise.all([
-            MemoryManager.extractMemories(From, Body, finalResponse),
-            MemoryManager.summarizeRecentChat(From)
+            (async () => {
+                const { MemoryManager } = await import('@/lib/agents/memory');
+                return MemoryManager.extractMemories(From, Body, finalResponse);
+            })(),
+            (async () => {
+                const { MemoryManager } = await import('@/lib/agents/memory');
+                return MemoryManager.summarizeRecentChat(From);
+            })()
         ]).catch(err => console.error("Memory Background Task Error:", err));
 
         // 8. Return to GHL

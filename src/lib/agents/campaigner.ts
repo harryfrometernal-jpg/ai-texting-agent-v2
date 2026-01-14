@@ -102,7 +102,7 @@ export async function runCampaignerAgent(context: IncomingMessageContext): Promi
 
             // Trigger immediate processing of the campaign queue
             try {
-                const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+                const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
                 const response = await fetch(`${baseUrl}/api/trigger/campaigns`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }

@@ -2,10 +2,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { MemoryManager } from '@/lib/agents/memory';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function GET(req: Request) {
     // Secure Cron
@@ -45,6 +41,7 @@ export async function GET(req: Request) {
                 const goal = item.goal || "Check in";
 
                 // Fetch memories (MemoryManager still uses Supabase internally? check it)
+                const { MemoryManager } = await import('@/lib/agents/memory');
                 const memories = await MemoryManager.getMemories(item.contact_phone);
 
                 const prompt = `
@@ -60,6 +57,8 @@ export async function GET(req: Request) {
                 - No hashtags.
                 `;
 
+                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
                 const result = await model.generateContent(prompt);
                 const message = result.response.text().trim();
 

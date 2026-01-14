@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { ContactManager } from '@/lib/agents/contact_manager';
 
 export async function GET(req: Request) {
   try {
@@ -14,6 +13,7 @@ export async function GET(req: Request) {
           return NextResponse.json({ error: 'Missing name parameter' }, { status: 400 });
         }
 
+        const { ContactManager } = await import('@/lib/agents/contact_manager');
         const contacts = await ContactManager.findContact(name);
         return NextResponse.json(contacts);
 
@@ -54,7 +54,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Missing name or phone' }, { status: 400 });
         }
 
-        const contactId = await ContactManager.addContact(name, phone, false);
+        const { ContactManager: ContactManager2 } = await import('@/lib/agents/contact_manager');
+        const contactId = await ContactManager2.addContact(name, phone, false);
 
         // Add additional details if provided
         if (email || notes || tags) {

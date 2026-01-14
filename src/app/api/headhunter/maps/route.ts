@@ -1,7 +1,6 @@
 
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { runMapsScraper } from '@/lib/agents/headhunter';
 
 export async function POST(req: Request) {
     try {
@@ -15,6 +14,7 @@ export async function POST(req: Request) {
         const { rows } = await db.sql`SELECT ghl_webhook_url FROM organizations WHERE id = ${org_id}`;
         const webhookUrl = rows[0]?.ghl_webhook_url;
 
+        const { runMapsScraper } = await import('@/lib/agents/headhunter');
         const leads = await runMapsScraper(niche, city, org_id, webhookUrl);
 
         return NextResponse.json({

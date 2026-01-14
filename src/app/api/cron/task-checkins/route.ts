@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { TaskManager } from '@/lib/agents/task_manager';
 import axios from 'axios';
 
 export async function GET(req: Request) {
@@ -58,6 +57,7 @@ export async function GET(req: Request) {
                 console.log(`Checking if ${user.user_phone} needs a check-in`);
 
                 // Check if user should receive a check-in
+                const { TaskManager } = await import('@/lib/agents/task_manager');
                 const shouldSend = await TaskManager.shouldSendCheckin(user.user_phone);
 
                 if (shouldSend) {

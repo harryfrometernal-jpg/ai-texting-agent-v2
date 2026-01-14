@@ -1,6 +1,5 @@
 
 import { NextResponse } from 'next/server';
-import { runResearcherAgent } from '@/lib/agents/researcher';
 
 export async function POST(req: Request) {
     try {
@@ -8,6 +7,7 @@ export async function POST(req: Request) {
 
         if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
 
+        const { runResearcherAgent } = await import('@/lib/agents/researcher');
         const opener = await runResearcherAgent(url, { myBusinessDesc });
 
         return NextResponse.json({ opener });
