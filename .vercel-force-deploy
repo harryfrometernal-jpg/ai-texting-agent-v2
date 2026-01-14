@@ -1,0 +1,6 @@
+Force deployment: 2026-01-14T09:52:00Z
+
+Build should now succeed with:
+- Dynamic rendering for auth and dashboard routes
+- All static imports converted to dynamic imports
+- Task management system fully implemented
