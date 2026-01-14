@@ -24,7 +24,7 @@ interface TaskPreferences {
 }
 
 export default function TasksPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [preferences, setPreferences] = useState<TaskPreferences | null>(null);
   const [newTask, setNewTask] = useState('');
@@ -48,11 +48,11 @@ export default function TasksPage() {
   };
 
   useEffect(() => {
-    if (session) {
+    if (session && status === 'authenticated') {
       fetchTasks();
       fetchPreferences();
     }
-  }, [session]);
+  }, [session, status]);
 
   const fetchTasks = async () => {
     try {
@@ -161,11 +161,21 @@ export default function TasksPage() {
     }
   };
 
-  if (loading) {
+  if (loading || status === 'loading') {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">Loading tasks...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">Please sign in to access task management.</div>
         </div>
       </div>
     );
