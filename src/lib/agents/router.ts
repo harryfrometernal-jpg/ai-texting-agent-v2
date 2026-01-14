@@ -20,6 +20,29 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
     return { type: 'contact_manager' as AgentType, sentiment: 'neutral' };
   }
 
+  // Check for recent contact manager context to route follow-ups
+  const { db } = await import("@/lib/db");
+  const { normalizePhoneNumber } = await import("@/lib/utils");
+
+  try {
+    const normalizedFrom = normalizePhoneNumber(context.from);
+    const { rows: contextRows } = await db.sql`
+      SELECT created_at FROM admin_notifications
+      WHERE contact_phone = ${normalizedFrom}
+        AND type = 'contact_context'
+        AND created_at > NOW() - INTERVAL '10 minutes'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if (contextRows.length > 0) {
+      console.log("Router detected recent contact context. Routing to Contact Manager for follow-up.");
+      return { type: 'contact_manager' as AgentType, sentiment: 'neutral' };
+    }
+  } catch (error) {
+    console.error("Router context check error:", error);
+  }
+
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   // Updated to use gemini-2.0-flash as 1.5 was unavailable for the current API key.
