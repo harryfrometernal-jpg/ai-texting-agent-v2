@@ -409,14 +409,24 @@ export class ContactManager {
       // Import axios dynamically
       const axios = (await import('axios')).default;
 
+      // Send message to the contact
       await axios.post(OUTBOUND_WEBHOOK_URL, {
         phone: normalizedPhone,
         message: command.message,
         source: 'contact_manager_direct'
       });
 
-      // Store contact context for follow-up messages
+      // Send confirmation message to the admin
       if (adminPhone) {
+        const adminConfirmation = `✅ Message delivered to ${normalizedPhone}: "${command.message}"${command.goalDescription ? `\n\nGoal: ${command.goalDescription}` : ''}`;
+
+        await axios.post(OUTBOUND_WEBHOOK_URL, {
+          phone: adminPhone,
+          message: adminConfirmation,
+          source: 'admin_confirmation'
+        });
+
+        // Store contact context for follow-up messages
         await this.storeContactContext(adminPhone, normalizedPhone);
       }
 
