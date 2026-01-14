@@ -19,27 +19,37 @@ export class ContactManager {
   // Store recent contact context for follow-up messages
   static async storeContactContext(adminPhone: string, contactPhone: string): Promise<void> {
     try {
+      // First delete any existing context for this admin to avoid duplicates
+      await db.sql`
+        DELETE FROM admin_notifications
+        WHERE contact_phone = ${adminPhone} AND type = 'contact_context'
+      `;
+
+      // Insert new context
       await db.sql`
         INSERT INTO admin_notifications (
           type, contact_phone, message, priority
         ) VALUES (
           'contact_context',
           ${adminPhone},
-          'Last contacted: ${contactPhone}',
+          ${`Last contacted: ${contactPhone}`},
           'low'
         )
-        ON CONFLICT DO NOTHING
       `;
+
+      console.log('✅ ContactManager: Stored context for', adminPhone, 'contacting', contactPhone);
     } catch (error) {
-      console.error("Error storing contact context:", error);
+      console.error("❌ Error storing contact context:", error);
     }
   }
 
   // Get recent contact context for follow-up detection
   static async getRecentContactContext(adminPhone: string): Promise<string | null> {
     try {
+      console.log('🔍 ContactManager: Looking for context for admin', adminPhone);
+
       const { rows } = await db.sql`
-        SELECT message FROM admin_notifications
+        SELECT message, created_at FROM admin_notifications
         WHERE contact_phone = ${adminPhone}
           AND type = 'contact_context'
           AND created_at > NOW() - INTERVAL '10 minutes'
@@ -47,14 +57,19 @@ export class ContactManager {
         LIMIT 1
       `;
 
+      console.log('🔍 ContactManager: Found', rows.length, 'context records');
+
       if (rows.length > 0) {
+        console.log('🔍 ContactManager: Context message:', rows[0].message);
         const message = rows[0].message;
         const phoneMatch = message.match(/Last contacted: (\+?\d+)/);
-        return phoneMatch ? phoneMatch[1] : null;
+        const extractedPhone = phoneMatch ? phoneMatch[1] : null;
+        console.log('🔍 ContactManager: Extracted phone:', extractedPhone);
+        return extractedPhone;
       }
       return null;
     } catch (error) {
-      console.error("Error getting contact context:", error);
+      console.error("❌ Error getting contact context:", error);
       return null;
     }
   }
