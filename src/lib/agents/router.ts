@@ -68,7 +68,6 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
     10. 'scheduler': Requests to schedule a message/text for later. (e.g. "Remind me to text Bob tomorrow").
     11. 'zoom': Requests to create Zoom meetings, get meeting links, or video calls.
     12. 'contact_manager': Admin commands to add contacts, find contacts, or text specific people/phone numbers directly. Includes commands like "text [phone number]", "text [number] and [message]", "add contact [name] [phone]", "contact management", or any instruction to send a text to a specific phone number.
-    13. 'task_manager': Daily task management including adding tasks, completing tasks, listing tasks, or setting daily goals. Examples: "add task call john", "meeting done", "my tasks today are", "show my tasks", "[task] done".
 
     Also analyze the user's sentiment: 'positive', 'neutral', 'negative', 'frustrated'.
 
@@ -79,7 +78,7 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
     
     Respond strictly in JSON format:
     {
-      "type": "agent_type", // One of: 'knowledge', 'calendar', 'docs', 'vapi', 'followup_scheduler', 'picasso', 'campaigner', 'concierge', 'system', 'scheduler', 'zoom', 'contact_manager', 'task_manager'
+      "type": "agent_type", // One of: 'knowledge', 'calendar', 'docs', 'vapi', 'followup_scheduler', 'picasso', 'campaigner', 'concierge', 'system', 'scheduler', 'zoom', 'contact_manager'
       "sentiment": "sentiment_value", // 'positive', 'neutral', 'negative', 'frustrated'
       "vapiAssistantId": "id_if_vapi_agent_selected_or_null",
       "reason": "short explanation"
