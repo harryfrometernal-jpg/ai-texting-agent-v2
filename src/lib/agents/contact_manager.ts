@@ -16,6 +16,49 @@ export interface ContactCommand {
 }
 
 export class ContactManager {
+  // Store recent contact context for follow-up messages
+  static async storeContactContext(adminPhone: string, contactPhone: string): Promise<void> {
+    try {
+      await db.sql`
+        INSERT INTO admin_notifications (
+          type, contact_phone, message, priority
+        ) VALUES (
+          'contact_context',
+          ${adminPhone},
+          'Last contacted: ${contactPhone}',
+          'low'
+        )
+        ON CONFLICT DO NOTHING
+      `;
+    } catch (error) {
+      console.error("Error storing contact context:", error);
+    }
+  }
+
+  // Get recent contact context for follow-up detection
+  static async getRecentContactContext(adminPhone: string): Promise<string | null> {
+    try {
+      const { rows } = await db.sql`
+        SELECT message FROM admin_notifications
+        WHERE contact_phone = ${adminPhone}
+          AND type = 'contact_context'
+          AND created_at > NOW() - INTERVAL '10 minutes'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+
+      if (rows.length > 0) {
+        const message = rows[0].message;
+        const phoneMatch = message.match(/Last contacted: (\+?\d+)/);
+        return phoneMatch ? phoneMatch[1] : null;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting contact context:", error);
+      return null;
+    }
+  }
+
   // Parse admin commands for contact management
   static async parseCommand(adminPhone: string, message: string): Promise<ContactCommand | null> {
     // Normalize the incoming phone number first
@@ -45,6 +88,42 @@ export class ContactManager {
 
     console.log('✅ ContactManager: Admin access confirmed');
 
+    // Check for follow-up message pattern first
+    const recentContactPhone = await this.getRecentContactContext(normalizedAdminPhone);
+
+    if (recentContactPhone) {
+      console.log('🔍 ContactManager: Found recent contact context:', recentContactPhone);
+
+      // Check if this message looks like a follow-up (not a new command)
+      const isFollowUpMessage = !message.toLowerCase().includes('text') &&
+                               !message.toLowerCase().includes('add contact') &&
+                               !message.toLowerCase().includes('find') &&
+                               message.length > 5; // Allow shorter messages for follow-ups
+
+      if (isFollowUpMessage) {
+        console.log('✅ ContactManager: Detected follow-up message to', recentContactPhone);
+        return {
+          action: 'text_phone',
+          contactPhone: recentContactPhone,
+          message: message.trim(),
+          goalDescription: 'Follow-up message'
+        };
+      }
+    }
+
+    // Check if this is just a phone number (setup for next message)
+    const phoneOnlyPattern = /^(\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})$/;
+    if (phoneOnlyPattern.test(message.trim())) {
+      console.log('📱 ContactManager: Detected phone number only, storing context');
+      const phoneNumber = normalizePhoneNumber(message.trim());
+      await this.storeContactContext(normalizedAdminPhone, phoneNumber);
+      return {
+        action: 'confirm_contact',
+        contactPhone: phoneNumber,
+        message: 'Phone number noted. Send your message next.'
+      };
+    }
+
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `
@@ -60,6 +139,7 @@ export class ContactManager {
       3. "add_contact" - Admin wants to add a new contact (e.g., "add contact John Smith 555-123-4567")
       4. "find_contact" - Admin wants to find/confirm a contact (e.g., "who is John?")
       5. "check_status" - Admin wants to know goal progress of a contact (e.g., "status of John", "how is the lead doing?")
+      6. "confirm_contact" - Just confirming/noting a phone number for future use
 
       For text_contact commands, extract:
       - contactName: The name of the person to text
@@ -77,7 +157,7 @@ export class ContactManager {
 
       Respond ONLY in JSON format:
       {
-        "action": "text_contact" | "text_phone" | "add_contact" | "find_contact" | "check_status" | null,
+        "action": "text_contact" | "text_phone" | "add_contact" | "find_contact" | "check_status" | "confirm_contact" | null,
         "contactName": "extracted name",
         "contactPhone": "extracted phone number",
         "message": "extracted message to send",
@@ -221,6 +301,9 @@ export class ContactManager {
         case 'text_phone':
           return await this.sendDirectMessage(command, adminPhone);
 
+        case 'confirm_contact':
+          return `📱 Phone number ${command.contactPhone} noted. Send your message next and I'll deliver it to them.`;
+
         default:
           return "❌ Unknown contact command.";
       }
@@ -313,8 +396,10 @@ export class ContactManager {
         source: 'contact_manager_direct'
       });
 
-      // For now, just send the message without complex database operations
-      // TODO: Add contact creation and goal tracking after fixing schema
+      // Store contact context for follow-up messages
+      if (adminPhone) {
+        await this.storeContactContext(adminPhone, normalizedPhone);
+      }
 
       return `✅ Message sent to ${normalizedPhone}: "${command.message}"${command.goalDescription ? `\n\nGoal set: ${command.goalDescription}` : ''}`;
 
