@@ -1,0 +1,9 @@
+node_modules
+.env.local
+.env.*.local
+.git
+*.log
+.DS_Store
+.vercel
+/tmp
+/temp
