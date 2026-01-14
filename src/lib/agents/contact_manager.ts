@@ -317,6 +317,10 @@ export class ContactManager {
           return await this.sendDirectMessage(command, adminPhone);
 
         case 'confirm_contact':
+          // Store context for follow-up messages
+          if (adminPhone && command.contactPhone) {
+            await this.storeContactContext(adminPhone, command.contactPhone);
+          }
           return `📱 Phone number ${command.contactPhone} noted. Send your message next and I'll deliver it to them.`;
 
         default:
