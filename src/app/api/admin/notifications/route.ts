@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { AdminNotificationService } from '@/lib/services/admin_notifications';
 
 export async function GET(req: Request) {
   try {
@@ -9,6 +8,7 @@ export async function GET(req: Request) {
 
     switch (action) {
       case 'summary':
+        const { AdminNotificationService } = await import('@/lib/services/admin_notifications');
         const summary = await AdminNotificationService.getPendingNotificationsSummary();
         return NextResponse.json(summary);
 
@@ -48,18 +48,21 @@ export async function POST(req: Request) {
         if (!notificationId) {
           return NextResponse.json({ error: 'Missing notificationId' }, { status: 400 });
         }
-        const sent = await AdminNotificationService.sendNotification(notificationId);
+        const { AdminNotificationService: AdminNotificationService2 } = await import('@/lib/services/admin_notifications');
+        const sent = await AdminNotificationService2.sendNotification(notificationId);
         return NextResponse.json({ success: sent });
 
       case 'send_pending_high':
-        const sentCount = await AdminNotificationService.sendPendingHighPriorityNotifications();
+        const { AdminNotificationService: AdminNotificationService3 } = await import('@/lib/services/admin_notifications');
+        const sentCount = await AdminNotificationService3.sendPendingHighPriorityNotifications();
         return NextResponse.json({ sent: sentCount });
 
       case 'create':
         if (!type || !message) {
           return NextResponse.json({ error: 'Missing type or message' }, { status: 400 });
         }
-        const id = await AdminNotificationService.createNotification(
+        const { AdminNotificationService: AdminNotificationService4 } = await import('@/lib/services/admin_notifications');
+        const id = await AdminNotificationService4.createNotification(
           type,
           message,
           priority || 'normal',
