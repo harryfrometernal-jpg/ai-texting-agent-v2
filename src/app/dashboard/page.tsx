@@ -1307,6 +1307,153 @@ export default function Dashboard() {
                     </div>
                 );
 
+            case 'tasks':
+                return (
+                    <div className="space-y-6 animate-in fade-in duration-500 pb-20 lg:pb-0">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-2xl font-bold text-white">Daily Task Manager</h3>
+                                <p className="text-slate-400 mt-1">Manage your daily tasks with AI-powered check-ins</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => window.open('/dashboard/tasks', '_blank')}
+                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-all flex items-center gap-2"
+                                >
+                                    <TargetIcon className="w-4 h-4" /> Open Full View
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Quick Stats */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="glass-panel rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-slate-400">Today's Tasks</div>
+                                    <TargetIcon className="w-4 h-4 text-blue-400" />
+                                </div>
+                                <div className="text-2xl font-bold text-white mt-1">-</div>
+                            </div>
+                            <div className="glass-panel rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-slate-400">Completed</div>
+                                    <CheckIcon className="w-4 h-4 text-green-400" />
+                                </div>
+                                <div className="text-2xl font-bold text-white mt-1">-</div>
+                            </div>
+                            <div className="glass-panel rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-slate-400">Progress</div>
+                                    <PieChartIcon className="w-4 h-4 text-purple-400" />
+                                </div>
+                                <div className="text-2xl font-bold text-white mt-1">-%</div>
+                            </div>
+                            <div className="glass-panel rounded-xl p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-slate-400">Check-ins Today</div>
+                                    <MessageIcon className="w-4 h-4 text-yellow-400" />
+                                </div>
+                                <div className="text-2xl font-bold text-white mt-1">-</div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* How to Use */}
+                            <div className="glass-panel rounded-2xl p-6">
+                                <h4 className="text-lg font-semibold text-white mb-4">📱 How to Use Daily Tasks</h4>
+                                <div className="space-y-3 text-sm text-slate-300">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs font-bold mt-0.5">1</div>
+                                        <div>
+                                            <div className="font-medium">Get your daily prompt at 7:30 AM</div>
+                                            <div className="text-slate-400">The AI will text you asking for your tasks</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs font-bold mt-0.5">2</div>
+                                        <div>
+                                            <div className="font-medium">Set your tasks via text</div>
+                                            <div className="text-slate-400">"My tasks today: call john, send email, gym"</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs font-bold mt-0.5">3</div>
+                                        <div>
+                                            <div className="font-medium">Complete tasks with "done"</div>
+                                            <div className="text-slate-400">Text "meeting done" to check it off</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400 text-xs font-bold mt-0.5">4</div>
+                                        <div>
+                                            <div className="font-medium">Get AI check-ins throughout the day</div>
+                                            <div className="text-slate-400">Supportive reminders and encouragement</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Example Commands */}
+                            <div className="glass-panel rounded-2xl p-6">
+                                <h4 className="text-lg font-semibold text-white mb-4">💬 Example Commands</h4>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="text-sm font-medium text-green-400 mb-2">Setting Tasks:</div>
+                                        <div className="space-y-1 text-sm text-slate-300">
+                                            <div className="bg-black/20 rounded p-2 font-mono">"My tasks today: call john, review proposal"</div>
+                                            <div className="bg-black/20 rounded p-2 font-mono">"Add task send email to client"</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-medium text-blue-400 mb-2">Completing Tasks:</div>
+                                        <div className="space-y-1 text-sm text-slate-300">
+                                            <div className="bg-black/20 rounded p-2 font-mono">"meeting done"</div>
+                                            <div className="bg-black/20 rounded p-2 font-mono">"call john done"</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-medium text-purple-400 mb-2">Viewing Tasks:</div>
+                                        <div className="space-y-1 text-sm text-slate-300">
+                                            <div className="bg-black/20 rounded p-2 font-mono">"show my tasks"</div>
+                                            <div className="bg-black/20 rounded p-2 font-mono">"what do I need to do today"</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Setup Instructions */}
+                        <div className="glass-panel rounded-2xl p-6 border border-blue-500/20">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <SparklesIcon className="w-4 h-4 text-white" />
+                                </div>
+                                <h4 className="text-lg font-semibold text-white">Ready to Start?</h4>
+                            </div>
+                            <p className="text-slate-300 mb-4">
+                                Your daily task system is ready! You'll receive your first prompt tomorrow at 7:30 AM EST,
+                                or you can start now by texting your tasks to the AI assistant.
+                            </p>
+                            <div className="flex flex-col lg:flex-row gap-4">
+                                <button
+                                    onClick={() => window.open('/dashboard/tasks', '_blank')}
+                                    className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+                                >
+                                    <TargetIcon className="w-5 h-5" />
+                                    Open Task Manager
+                                </button>
+                                <button
+                                    onClick={() => alert('Text the AI assistant to start managing tasks!')}
+                                    className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+                                >
+                                    <MessageIcon className="w-5 h-5" />
+                                    Start with SMS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+
             case 'knowledge':
                 return (
                     <div className="space-y-6 animate-in fade-in duration-500">
@@ -1783,6 +1930,7 @@ export default function Dashboard() {
                         <NavButton active={activeTab === 'campaigns'} onClick={() => { setActiveTab('campaigns'); setSidebarOpen(false); }} icon={<MegaphoneIcon />} label="Campaigns" expanded={true} />
                         <NavButton active={activeTab === 'whitelist'} onClick={() => { setActiveTab('whitelist'); setSidebarOpen(false); }} icon={<UsersIcon />} label="Contacts" expanded={true} />
                         <NavButton active={activeTab === 'logs'} onClick={() => { setActiveTab('logs'); setSidebarOpen(false); }} icon={<ActivityIcon />} label="Conversations" expanded={true} />
+                        <NavButton active={activeTab === 'tasks'} onClick={() => { setActiveTab('tasks'); setSidebarOpen(false); }} icon={<TargetIcon />} label="Tasks" expanded={true} />
                         <NavButton active={activeTab === 'knowledge'} onClick={() => { setActiveTab('knowledge'); setSidebarOpen(false); }} icon={<BookIcon />} label="Knowledge" expanded={true} />
                         <NavButton active={activeTab === 'access_control'} onClick={() => { setActiveTab('access_control'); setSidebarOpen(false); }} icon={<ShieldCheckIcon />} label="Admins" expanded={true} />
                         <NavButton active={activeTab === 'headhunter'} onClick={() => { setActiveTab('headhunter'); setSidebarOpen(false); }} icon={<GlobeIcon />} label="Headhunter" expanded={true} />

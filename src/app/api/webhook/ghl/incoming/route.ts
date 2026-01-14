@@ -267,6 +267,17 @@ export async function POST(req: Request) {
                     }
                     break;
 
+                case 'task_manager':
+                    const { TaskManager } = await import('@/lib/agents/task_manager');
+                    const taskCommand = await TaskManager.parseCommand(From, Body);
+
+                    if (taskCommand) {
+                        finalResponse = await TaskManager.processCommand(taskCommand, From);
+                    } else {
+                        finalResponse = "I didn't understand that task command. Try: 'add task call john', 'show my tasks', or 'meeting done'";
+                    }
+                    break;
+
                 case 'general':
                 default:
                     finalResponse = await ErrorHandler.retryWithBackoff(async () => {
