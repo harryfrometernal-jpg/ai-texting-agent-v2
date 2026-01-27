@@ -6,9 +6,9 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function routeMessage(context: IncomingMessageContext): Promise<{ type: AgentType; vapiAssistantId?: string; sentiment?: string }> {
   // 0. PRIORITY CHECK: Accountability responses (numbered goal lists from daily prompts)
-  const accountabilityResponsePattern = /^\s*(?:\d+[\.\)]\s*[^\d\s].+\s*){2,}/s;
-  if (accountabilityResponsePattern.test(context.body)) {
-    console.log("Router detected accountability response with numbered goals. Routing to Task Manager.");
+  const numberedItems = (context.body.match(/\d+[\.\)]\s*[^0-9]/g) || []).length;
+  if (numberedItems >= 2) {
+    console.log(`Router detected ${numberedItems} numbered goals. Routing to Task Manager.`);
     return { type: 'task_manager' as AgentType, sentiment: 'neutral' };
   }
 
