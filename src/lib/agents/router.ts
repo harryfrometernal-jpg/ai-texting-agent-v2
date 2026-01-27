@@ -14,26 +14,36 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
   }
 
   // 0.3. Check for task management patterns (daily goals, accountability, progress updates)
-  const taskPatterns = [
-    /(?:daily|today|tomorrow)\s*(?:goals?|tasks?|priorities)/i,
-    /(?:my|today's)\s*(?:goals?|tasks?|priorities|plan)/i,
-    /(?:completed?|finished?|done)\s*(?:task|goal|workout|project|proposal|budget)/i,
-    /(?:working on|need to|want to)\s*(?:finish|complete|do)/i,
+  // PRIORITY: Check for numbered goal lists first (common accountability responses)
+  const goalListingPattern = /^\s*(\d+[\.\)]\s*.+\s*){2,}/s;  // 2+ numbered items
+  const hasMultipleGoals = goalListingPattern.test(context.body);
+
+  // Check for goal/task keywords
+  const taskKeywords = [
+    /(?:my|today's|daily)\s*(?:goals?|tasks?|priorities|plan)/i,
+    /(?:want to|need to|going to)\s*(?:accomplish|finish|complete|do)/i,
+    /(?:plan to|hoping to|trying to)/i,
+    /(?:1\.|2\.|3\.|\d+\.)\s*(?!.*(?:pm|am|o'clock|hour|minute|time))/i, // numbered without time references
+    /^(?:today|my goals?|priorities)/i,
+    /(?:finished?|completed?|done)\s*(?:task|goal|workout|project)/i,
     /(?:task|goal)\s*(?:update|progress|status)/i,
-    /(?:accomplished?|achieved?|did)\s*(?:today|this)/i,
-    /(?:still need|next I need|have to)\s*(?:to|do)/i,
-    /^(?:today|my goals?|daily plan)/i,
-    /(?:finished?|completed?|done with|got done)/i,
-    /(?:still working|working on|need to finish)/i,
-    /^task update/i,
-    /(?:workout|gym|exercise)\s*(?:done|completed?|finished?)/i
+    /(?:working on|still need)/i
   ];
 
-  // Also check if this is a response to a daily prompt by looking for goal-listing structure
-  const goalListingPattern = /(?:\d+[\.\)]\s*|•\s*|-\s*).+(?:\d+[\.\)]\s*|•\s*|-\s*)/s;
-  const hasGoalStructure = goalListingPattern.test(context.body);
+  // Check if message contains time references (to avoid scheduler conflicts)
+  const timeReferences = [
+    /(?:at|by|around|before|after)\s*\d+/i,
+    /(?:am|pm|o'clock)/i,
+    /(?:morning|afternoon|evening|tonight|tomorrow|later|soon)/i,
+    /(?:remind|schedule|set)/i
+  ];
 
-  const isTaskMessage = taskPatterns.some(pattern => pattern.test(context.body)) || hasGoalStructure;
+  const hasTimeReference = timeReferences.some(pattern => pattern.test(context.body));
+  const hasTaskKeywords = taskKeywords.some(pattern => pattern.test(context.body));
+
+  // If it has multiple numbered goals and no time references, it's definitely task management
+  // If it has task keywords but time references, let AI decide later
+  const isTaskMessage = hasMultipleGoals || (hasTaskKeywords && !hasTimeReference);
   if (isTaskMessage) {
     console.log("Router detected task management pattern. Routing to Task Manager.");
     return { type: 'task_manager' as AgentType, sentiment: 'neutral' };
