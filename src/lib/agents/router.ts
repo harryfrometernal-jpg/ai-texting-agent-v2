@@ -17,14 +17,23 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
   const taskPatterns = [
     /(?:daily|today|tomorrow)\s*(?:goals?|tasks?|priorities)/i,
     /(?:my|today's)\s*(?:goals?|tasks?|priorities|plan)/i,
-    /(?:completed?|finished?|done)\s*(?:task|goal|workout|project)/i,
+    /(?:completed?|finished?|done)\s*(?:task|goal|workout|project|proposal|budget)/i,
     /(?:working on|need to|want to)\s*(?:finish|complete|do)/i,
     /(?:task|goal)\s*(?:update|progress|status)/i,
     /(?:accomplished?|achieved?|did)\s*(?:today|this)/i,
-    /(?:still need|next I need|have to)\s*(?:to|do)/i
+    /(?:still need|next I need|have to)\s*(?:to|do)/i,
+    /^(?:today|my goals?|daily plan)/i,
+    /(?:finished?|completed?|done with|got done)/i,
+    /(?:still working|working on|need to finish)/i,
+    /^task update/i,
+    /(?:workout|gym|exercise)\s*(?:done|completed?|finished?)/i
   ];
 
-  const isTaskMessage = taskPatterns.some(pattern => pattern.test(context.body));
+  // Also check if this is a response to a daily prompt by looking for goal-listing structure
+  const goalListingPattern = /(?:\d+[\.\)]\s*|•\s*|-\s*).+(?:\d+[\.\)]\s*|•\s*|-\s*)/s;
+  const hasGoalStructure = goalListingPattern.test(context.body);
+
+  const isTaskMessage = taskPatterns.some(pattern => pattern.test(context.body)) || hasGoalStructure;
   if (isTaskMessage) {
     console.log("Router detected task management pattern. Routing to Task Manager.");
     return { type: 'task_manager' as AgentType, sentiment: 'neutral' };

@@ -89,13 +89,18 @@ export class TaskManager {
       // Log the check-in
       const todayDate = today.toISOString().split('T')[0];
 
-      await db.sql`
+      const { rows: checkinRows } = await db.sql`
         INSERT INTO task_checkins (
           user_phone, task_date, checkin_type, message_sent
         ) VALUES (
           ${userPhone}, ${todayDate}, 'daily_prompt', ${morningMessage}
         )
+        RETURNING id, checkin_time
       `;
+
+      // Schedule follow-up call if no response after 2 hours
+      const checkinId = checkinRows[0].id;
+      await this.scheduleFollowUpCall(userPhone, checkinId, 120); // 120 minutes = 2 hours
 
       console.log(`Morning prompt sent to ${userPhone}: ${morningMessage.substring(0, 50)}...`);
       return morningMessage;
@@ -175,6 +180,9 @@ export class TaskManager {
         AND checkin_type = 'daily_prompt'
         AND user_response IS NULL
       `;
+
+      // Cancel any pending follow-up calls since user responded
+      await this.cancelFollowUpCall(userPhone);
 
       // Generate encouraging response
       const responsePrompt = `
@@ -344,5 +352,126 @@ export class TaskManager {
     }
 
     return "Ready for a fresh start!";
+  }
+
+  // Schedule a follow-up call if user doesn't respond to accountability prompts
+  static async scheduleFollowUpCall(userPhone: string, checkinId: string, delayMinutes: number): Promise<void> {
+    try {
+      const callTime = new Date();
+      callTime.setMinutes(callTime.getMinutes() + delayMinutes);
+
+      // Store the scheduled call in the database
+      await db.sql`
+        INSERT INTO scheduled_messages (
+          target_phone, scheduled_at, message_body, org_id, status
+        )
+        SELECT
+          ${userPhone},
+          ${callTime.toISOString()},
+          'ACCOUNTABILITY_FOLLOW_UP_CALL',
+          w.org_id,
+          'pending'
+        FROM whitelist w
+        WHERE w.phone_number = ${userPhone}
+        LIMIT 1
+      `;
+
+      console.log(`Scheduled follow-up call for ${userPhone} in ${delayMinutes} minutes if no response to checkin ${checkinId}`);
+    } catch (error) {
+      console.error("Error scheduling follow-up call:", error);
+    }
+  }
+
+  // Cancel follow-up call when user responds
+  static async cancelFollowUpCall(userPhone: string): Promise<void> {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      await db.sql`
+        UPDATE scheduled_messages
+        SET status = 'cancelled'
+        WHERE target_phone = ${userPhone}
+        AND message_body = 'ACCOUNTABILITY_FOLLOW_UP_CALL'
+        AND scheduled_at >= ${today}
+        AND status = 'pending'
+      `;
+
+      console.log(`Cancelled follow-up calls for ${userPhone} due to response`);
+    } catch (error) {
+      console.error("Error cancelling follow-up call:", error);
+    }
+  }
+
+  // Check for users who need follow-up calls (called by cron job)
+  static async processFollowUpCalls(): Promise<string[]> {
+    try {
+      const { rows: scheduledCalls } = await db.sql`
+        SELECT * FROM scheduled_messages
+        WHERE message_body = 'ACCOUNTABILITY_FOLLOW_UP_CALL'
+        AND status = 'pending'
+        AND scheduled_at <= NOW()
+      `;
+
+      const callsTriggered: string[] = [];
+
+      for (const call of scheduledCalls) {
+        try {
+          // Trigger voice call through VAPI
+          const { triggerVapiCall } = await import('./vapi');
+
+          // Get default assistant for accountability calls
+          const { rows: assistants } = await db.sql`
+            SELECT * FROM vapi_assistants
+            WHERE name ILIKE '%accountability%' OR name ILIKE '%check%'
+            LIMIT 1
+          `;
+
+          if (assistants.length > 0) {
+            const callResult = await triggerVapiCall(call.target_phone, assistants[0].assistant_id, {
+              name: 'User',
+              summary: 'Follow-up call for daily accountability check-in. User did not respond to morning text prompt.'
+            });
+
+            if (callResult) {
+              await db.sql`
+                UPDATE scheduled_messages
+                SET status = 'sent'
+                WHERE id = ${call.id}
+              `;
+
+              callsTriggered.push(call.target_phone);
+              console.log(`✅ Follow-up call triggered for ${call.target_phone}`);
+            } else {
+              await db.sql`
+                UPDATE scheduled_messages
+                SET status = 'failed'
+                WHERE id = ${call.id}
+              `;
+              console.log(`❌ Failed to trigger call for ${call.target_phone}`);
+            }
+          } else {
+            console.log(`No accountability assistant found for follow-up call to ${call.target_phone}`);
+            // Mark as failed if no assistant
+            await db.sql`
+              UPDATE scheduled_messages
+              SET status = 'failed_no_assistant'
+              WHERE id = ${call.id}
+            `;
+          }
+        } catch (error) {
+          console.error(`Error processing follow-up call for ${call.target_phone}:`, error);
+          await db.sql`
+            UPDATE scheduled_messages
+            SET status = 'failed'
+            WHERE id = ${call.id}
+          `;
+        }
+      }
+
+      return callsTriggered;
+    } catch (error) {
+      console.error("Error processing follow-up calls:", error);
+      return [];
+    }
   }
 }

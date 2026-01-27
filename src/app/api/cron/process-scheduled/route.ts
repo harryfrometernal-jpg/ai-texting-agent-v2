@@ -167,9 +167,19 @@ export async function GET(req: Request) {
             }
         }
 
+        // 4. Process Follow-up Calls for Non-Responsive Users
+        console.log('Processing follow-up calls for accountability...');
+
+        const callsTriggered = await TaskManager.processFollowUpCalls();
+
+        if (callsTriggered.length > 0) {
+            console.log(`✅ Triggered ${callsTriggered.length} follow-up calls: ${callsTriggered.join(', ')}`);
+        }
+
         return NextResponse.json({
             status: 'ok',
             processed: processedCount,
+            follow_up_calls: callsTriggered.length,
             timestamp: currentTime.toISOString(),
             utc_time: `${currentHour}:${currentMinute.toString().padStart(2, '0')}`
         });
