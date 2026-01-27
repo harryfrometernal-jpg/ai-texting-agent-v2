@@ -263,6 +263,15 @@ export async function POST(req: Request) {
                     }
                     break;
 
+                case 'task_manager':
+                    console.log('📝 Webhook: Processing task_manager request from', From);
+
+                    const { TaskManager } = await import('@/lib/agents/task_manager');
+
+                    // Check if this is a response to daily prompt or general task interaction
+                    finalResponse = await TaskManager.processDailyGoals(context);
+                    break;
+
 
                 case 'general':
                 default:

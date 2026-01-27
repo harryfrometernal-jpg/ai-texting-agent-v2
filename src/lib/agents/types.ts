@@ -1,4 +1,4 @@
-export type AgentType = 'general' | 'calendar' | 'docs' | 'vapi' | 'followup_scheduler' | 'knowledge' | 'vision' | 'picasso' | 'campaigner' | 'concierge' | 'system' | 'scheduler' | 'zoom' | 'contact_manager';
+export type AgentType = 'general' | 'calendar' | 'docs' | 'vapi' | 'followup_scheduler' | 'knowledge' | 'vision' | 'picasso' | 'campaigner' | 'concierge' | 'system' | 'scheduler' | 'zoom' | 'contact_manager' | 'task_manager';
 
 export interface AgentResponse {
     message: string;

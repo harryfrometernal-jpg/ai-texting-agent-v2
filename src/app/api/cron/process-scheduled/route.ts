@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import axios from 'axios';
+import { TaskManager } from '@/lib/agents/task_manager';
 
 // GHL Webhook to actually send the text
 // User must setup a Workflow in GHL: Webhook Trigger -> Send SMS
@@ -88,7 +89,90 @@ export async function GET(req: Request) {
             }
         }
 
-        return NextResponse.json({ status: 'ok', processed: processedCount });
+        // 3. Process Daily Task Prompts
+        console.log('Processing daily task prompts...');
+
+        const currentTime = new Date();
+        const currentHour = currentTime.getUTCHours();
+        const currentMinute = currentTime.getUTCMinutes();
+
+        // Query for users who should receive prompts at this time
+        // Convert their local time preferences to UTC for comparison
+        const { rows: usersForPrompts } = await db.sql`
+            SELECT tp.*, w.org_id, o.ghl_webhook_url
+            FROM task_preferences tp
+            JOIN whitelist w ON tp.user_phone = w.phone_number
+            JOIN organizations o ON w.org_id = o.id
+            WHERE tp.daily_prompt_time IS NOT NULL
+            AND w.ai_status = 'active'
+        `;
+
+        for (const user of usersForPrompts) {
+            try {
+                // Convert user's local prompt time to UTC
+                const [hours, minutes] = user.daily_prompt_time.split(':');
+                let promptHour = parseInt(hours);
+
+                // Adjust for timezone (EST is UTC-5, but we'll be flexible)
+                // For now, assuming 8:00 AM EST = 13:00 UTC (1 PM UTC)
+                if (user.timezone === 'America/New_York') {
+                    promptHour += 5; // Convert EST to UTC
+                }
+
+                // Check if current time matches prompt time (with 1 hour window)
+                const timeMatch = (currentHour === promptHour && currentMinute >= 0 && currentMinute < 60);
+
+                if (timeMatch) {
+                    console.log(`Sending daily prompt to ${user.user_phone} at ${currentTime.toISOString()}`);
+
+                    // Check if we already sent a prompt today
+                    const today = currentTime.toISOString().split('T')[0];
+                    const { rows: existingPrompts } = await db.sql`
+                        SELECT id FROM task_checkins
+                        WHERE user_phone = ${user.user_phone}
+                        AND task_date = ${today}
+                        AND checkin_type = 'daily_prompt'
+                    `;
+
+                    if (existingPrompts.length === 0) {
+                        // Generate and send daily prompt
+                        const promptMessage = await TaskManager.sendDailyPrompt(user.user_phone);
+
+                        if (promptMessage && promptMessage.length > 0) {
+                            const webhookUrl = user.ghl_webhook_url || OUTBOUND_WEBHOOK_URL;
+
+                            if (webhookUrl) {
+                                try {
+                                    await axios.post(webhookUrl, {
+                                        phone: user.user_phone,
+                                        message: promptMessage,
+                                        source: 'task_manager_daily_prompt'
+                                    });
+
+                                    console.log(`✅ Daily prompt sent to ${user.user_phone}`);
+                                    processedCount++;
+                                } catch (sendError) {
+                                    console.error(`Failed to send daily prompt to ${user.user_phone}:`, sendError);
+                                }
+                            } else {
+                                console.error(`No webhook URL for user ${user.user_phone}`);
+                            }
+                        }
+                    } else {
+                        console.log(`Daily prompt already sent to ${user.user_phone} today`);
+                    }
+                }
+            } catch (userError) {
+                console.error(`Error processing daily prompt for ${user.user_phone}:`, userError);
+            }
+        }
+
+        return NextResponse.json({
+            status: 'ok',
+            processed: processedCount,
+            timestamp: currentTime.toISOString(),
+            utc_time: `${currentHour}:${currentMinute.toString().padStart(2, '0')}`
+        });
 
     } catch (e: any) {
         console.error("Cron Error:", e);
