@@ -13,6 +13,23 @@ export async function routeMessage(context: IncomingMessageContext): Promise<{ t
     return { type: 'vision' as AgentType }; // We need to add 'vision' to AgentType
   }
 
+  // 0.3. Check for task management patterns (daily goals, accountability, progress updates)
+  const taskPatterns = [
+    /(?:daily|today|tomorrow)\s*(?:goals?|tasks?|priorities)/i,
+    /(?:my|today's)\s*(?:goals?|tasks?|priorities|plan)/i,
+    /(?:completed?|finished?|done)\s*(?:task|goal|workout|project)/i,
+    /(?:working on|need to|want to)\s*(?:finish|complete|do)/i,
+    /(?:task|goal)\s*(?:update|progress|status)/i,
+    /(?:accomplished?|achieved?|did)\s*(?:today|this)/i,
+    /(?:still need|next I need|have to)\s*(?:to|do)/i
+  ];
+
+  const isTaskMessage = taskPatterns.some(pattern => pattern.test(context.body));
+  if (isTaskMessage) {
+    console.log("Router detected task management pattern. Routing to Task Manager.");
+    return { type: 'task_manager' as AgentType, sentiment: 'neutral' };
+  }
+
   // 0.5. Check for explicit contact manager patterns (phone numbers)
   const phonePattern = /(?:text|call|contact|reach out to|check in on|message)\s*(?:phone\s*)?(?:number\s*)?(\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4})/i;
   if (phonePattern.test(context.body)) {
